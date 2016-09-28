@@ -381,6 +381,9 @@ function dragula (initialContainers, options) {
       if (droppable === false) {
         return false;
       }
+      if (o.containerCanStart && _item.contains(target)) {
+        return false;
+      }
 
       var immediate = getImmediateChild(target, elementBehindCursor);
       var reference = getReference(target, immediate, clientX, clientY);

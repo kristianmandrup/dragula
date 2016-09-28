@@ -37,6 +37,7 @@ function dragula (initialContainers, options) {
   if (o.revertOnSpill === void 0) { o.revertOnSpill = false; }
   if (o.removeOnSpill === void 0) { o.removeOnSpill = false; }
   if (o.direction === void 0) { o.direction = 'vertical'; }
+  if (o.fixMoveDirection === void 0) { o.fixMoveDirection = null; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
 
@@ -365,8 +366,17 @@ function dragula (initialContainers, options) {
     var x = clientX - _offsetX;
     var y = clientY - _offsetY;
 
-    _mirror.style.left = x + 'px';
-    _mirror.style.top = y + 'px';
+    switch (o.fixMoveDirection) {
+      case 'vertical':
+        _mirror.style.top = y + 'px';
+        break;
+      case 'horizontal':
+        _mirror.style.left = x + 'px';
+        break;
+      default:
+        _mirror.style.left = x + 'px';
+        _mirror.style.top = y + 'px';
+    }
 
     var item = _copy || _item;
     var elementBehindCursor = getElementBehindPoint(_mirror, clientX, clientY);

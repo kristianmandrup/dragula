@@ -77,6 +77,11 @@ function dragula (initialContainers, options) {
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
   if (o.containerCanStart === void 0) { o.containerCanStart = false; }
+  if (o.insertBefore === void 0) {
+    o.insertBefore = function(dropTarget, item, reference) {
+      dropTarget.insertBefore(item, reference);
+    };
+  }
 
   var drake = emitter({
     containers: o.containers,
@@ -328,7 +333,7 @@ function dragula (initialContainers, options) {
           parent.removeChild(_copy);
         }
       } else {
-        _source.insertBefore(item, _initialSibling);
+        o.insertBefore(_source, item, _initialSibling);
       }
     }
     if (initial || reverts) {
@@ -444,7 +449,7 @@ function dragula (initialContainers, options) {
       reference !== nextEl(item)
     ) {
       _currentSibling = reference;
-      dropTarget.insertBefore(item, reference);
+      o.insertBefore(dropTarget, item, reference);
       drake.emit('shadow', item, dropTarget, _source);
     }
     function moved (type) { drake.emit(type, item, _lastDropTarget, _source); }

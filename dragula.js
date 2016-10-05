@@ -368,6 +368,19 @@ function dragula (initialContainers, options) {
     _mirror.style.left = x + 'px';
     _mirror.style.top = y + 'px';
 
+    // Correct position:fixed placement on iOS
+    var rect = _mirror.getBoundingClientRect();
+    var tolerance = 2;
+    if (
+      rect.top < y - tolerance || rect.top > y + tolerance ||
+      rect.left < x - tolerance || rect.left > x + tolerance
+    ) {
+      x = x + (x - rect.left);
+      y = y + (y - rect.top);
+      _mirror.style.left = x + 'px';
+      _mirror.style.top = y + 'px';
+    }
+
     var item = _copy || _item;
     var elementBehindCursor = getElementBehindPoint(_mirror, clientX, clientY);
     var dropTarget = findDropTarget(elementBehindCursor, clientX, clientY);
@@ -529,21 +542,15 @@ function whichMouseButton (e) {
 }
 
 function getOffset (el) {
-  var rect = el.getBoundingClientRect();
+  for (var left = 0, top=0; el !== null;) {
+    left += el.offsetLeft;
+    top += el.offsetTop;
+    el = el.offsetParent;
+  }
   return {
-    left: rect.left + getScroll('scrollLeft', 'pageXOffset'),
-    top: rect.top + getScroll('scrollTop', 'pageYOffset')
+    left: left,
+    top: top
   };
-}
-
-function getScroll (scrollProp, offsetProp) {
-  if (typeof global[offsetProp] !== 'undefined') {
-    return global[offsetProp];
-  }
-  if (documentElement.clientHeight) {
-    return documentElement[scrollProp];
-  }
-  return doc.body[scrollProp];
 }
 
 function getElementBehindPoint (point, x, y) {

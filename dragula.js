@@ -3,6 +3,7 @@
 var emitter = require('contra/emitter');
 var crossvent = require('crossvent');
 var classes = require('./classes');
+var throttle = require('lodash.throttle');
 var doc = document;
 var documentElement = doc.documentElement;
 
@@ -45,6 +46,7 @@ function dragula (initialContainers, options) {
   if (o.fixMoveDirection === void 0) { o.fixMoveDirection = null; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
+  if (o.throttle === void 0) { o.throttle = false; }
 
   var drake = emitter({
     containers: o.containers,
@@ -77,7 +79,7 @@ function dragula (initialContainers, options) {
 
   function eventualMovements (remove) {
     var op = remove ? 'remove' : 'add';
-    touchy(documentElement, op, 'mousemove', startBecauseMouseMoved);
+    touchy(documentElement, op, 'mousemove', throttle(startBecauseMouseMoved, o.throttle));
   }
 
   function movements (remove) {
@@ -522,7 +524,7 @@ function dragula (initialContainers, options) {
     classes.rm(_mirror, 'gu-transit');
     classes.add(_mirror, 'gu-mirror');
     o.mirrorContainer.appendChild(_mirror);
-    touchy(documentElement, 'add', 'mousemove', drag);
+    touchy(documentElement, 'add', 'mousemove', throttle(drag, o.throttle));
     classes.add(o.mirrorContainer, 'gu-unselectable');
     drake.emit('cloned', _mirror, _item, 'mirror');
   }
@@ -530,7 +532,7 @@ function dragula (initialContainers, options) {
   function removeMirrorImage () {
     if (_mirror) {
       classes.rm(o.mirrorContainer, 'gu-unselectable');
-      touchy(documentElement, 'remove', 'mousemove', drag);
+      touchy(documentElement, 'remove', 'mousemove', throttle(drag, o.throttle));
       getParent(_mirror).removeChild(_mirror);
       _mirror = null;
     }

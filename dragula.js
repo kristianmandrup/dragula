@@ -179,9 +179,7 @@ function dragula (initialContainers, options) {
     }
 
     var grabbed = _grabbed; // call to end() unsets _grabbed
-    eventualMovements(true);
-    movements();
-    end();
+    ungrab();
     start(grabbed);
 
     var offset = getOffset(_item);
@@ -190,7 +188,6 @@ function dragula (initialContainers, options) {
 
     classes.add(_copy || _item, 'gu-transit');
     renderMirrorImage();
-    drag(e);
   }
 
   function canStart (item) {

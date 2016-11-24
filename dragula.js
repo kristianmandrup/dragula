@@ -181,7 +181,15 @@ function dragula (initialContainers, options) {
         return;
       }
     }
-    if (Math.abs(_moveX - clientX) <= o.deadzone && Math.abs(_moveY - clientY) <= o.deadzone) {
+    var grabTravelDistance = distance({
+      x: _moveX,
+      y: _moveY
+    }, {
+      x: clientX,
+      y: clientY
+    });
+
+    if (grabTravelDistance <= o.deadzone) {
       return;
     }
 
@@ -634,6 +642,13 @@ function touchy (el, op, type, fn) {
     crossvent[op](el, touch[type], fn);
     crossvent[op](el, type, fn);
   }
+}
+
+
+function distance(pt1, pt2) {
+  var dist2 = Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2);
+  var dist = Math.sqrt(dist2);
+  return dist;
 }
 
 function whichMouseButton (e) {

@@ -242,6 +242,10 @@ offset: function( offset, e, item ) {
 }
 ```
 
+#### `options.deadzone`
+
+When this option is enabled, if the user clicks on an input element the drag won't start until their mouse pointer moves the specified distance. This translates into the user being able to accidently drag a few pixels and not trigger the drag.
+
 ## API
 
 The `dragula` method returns a tiny object with a concise API. We'll refer to the API returned by `dragula` as `drake`.

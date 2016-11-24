@@ -16,6 +16,7 @@ function dragula (initialContainers, options) {
   var _mirror; // mirror image
   var _source; // source container
   var _item; // item being dragged
+  var _data; // data to transfer, the data that will be displayed on shadow and drop
   var _offsetX; // reference x
   var _offsetY; // reference y
   var _moveX; // reference move x
@@ -44,12 +45,14 @@ function dragula (initialContainers, options) {
   if (o.removeOnSpill === void 0) { o.removeOnSpill = false; }
   if (o.direction === void 0) { o.direction = 'vertical'; }
   if (o.fixMoveDirection === void 0) { o.fixMoveDirection = null; }
+  if (o.getDirection === void 0) { o.getDirection = function() { return o.direction; }; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.deadzone === void 0){ o.deadzone = 0; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
   if (o.throttle === void 0) { o.throttle = false; }
   if (o.offset === void 0) { o.offset = thru; }
   if (o.allowNestedContainers === void 0) { o.allowNestedContainers = false; }
+  if (o.draggedContent === void 0) { o.draggedContent = function(item) { return item; }; }
 
   var drake = emitter({
     containers: o.containers,
@@ -213,7 +216,7 @@ function dragula (initialContainers, options) {
     _offsetX = calculatedOffset.x;
     _offsetY = calculatedOffset.y;
 
-    classes.add(_copy || _item, 'gu-transit');
+    classes.add(_data || _copy || _item, 'gu-transit');
     renderMirrorImage();
   }
 
@@ -234,6 +237,12 @@ function dragula (initialContainers, options) {
         return;
       }
     }
+
+    _data = o.draggedContent(item);
+    if (_data === item && isCopy(item, item.parentNode)) {
+      _data = item.cloneNode(true);
+    }
+
     var source = getParent(item);
     if (!source) {
       return;
@@ -347,14 +356,12 @@ function dragula (initialContainers, options) {
       return;
     }
     var reverts = arguments.length > 0 ? revert : o.revertOnSpill;
-    var item = _copy || _item;
+    var item = _data || _copy || _item;
     var parent = getParent(item);
     var initial = isInitialPlacement(parent);
     if (initial === false && reverts) {
-      if (_copy) {
-        if (parent) {
-          parent.removeChild(_copy);
-        }
+      if (_copy && parent) {
+        parent.removeChild(item);
       } else {
         _source.insertBefore(item, _initialSibling);
       }
@@ -372,7 +379,7 @@ function dragula (initialContainers, options) {
     ungrab();
     removeMirrorImage();
     if (item) {
-      classes.rm(item, 'gu-transit');
+      classes.rm(_data || item, 'gu-transit');
     }
     if (_renderTimer) {
       clearTimeout(_renderTimer);
@@ -533,7 +540,11 @@ function dragula (initialContainers, options) {
       reference !== nextEl(item)
     ) {
       _currentSibling = reference;
-      dropTarget.insertBefore(item, reference);
+      dropTarget.insertBefore(_data, reference);
+      if (_data !== item && parent) {
+        parent.removeChild(_item);
+      }
+
       drake.emit('shadow', item, dropTarget, _source);
     }
     function moved (type) { drake.emit(type, item, _lastDropTarget, _source); }
@@ -589,7 +600,8 @@ function dragula (initialContainers, options) {
   }
 
   function getReference (dropTarget, target, x, y) {
-    var horizontal = o.direction === 'horizontal';
+    var direction = dropTarget.getAttribute('dragula-direction');
+    var horizontal = direction && direction !== null ? direction === 'horizontal' : o.direction === 'horizontal';
     var reference = target !== dropTarget ? inside() : outside();
     return reference;
 

@@ -214,18 +214,15 @@ function dragula (initialContainers, options) {
       return;
     }
 
+    var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
+
     if (o.ignoreInputTextSelection) {
-      var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
-      if (isInput(elementBehindCursor) && !o.ignore.length) {
+      if (isInput(elementBehindCursor)) {
         return;
       }
     }
 
     if (o.ignore.length) {
-      var clientX = getCoord('clientX', e);
-      var clientY = getCoord('clientY', e);
-
-      var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
       var ignore = false;
 
       o.ignore.forEach(function (tagName) {

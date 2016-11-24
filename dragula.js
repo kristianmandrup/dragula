@@ -45,6 +45,7 @@ function dragula (initialContainers, options) {
   if (o.direction === void 0) { o.direction = 'vertical'; }
   if (o.fixMoveDirection === void 0) { o.fixMoveDirection = null; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
+  if (o.deadzone === void 0){ o.deadzone = 0; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
   if (o.throttle === void 0) { o.throttle = false; }
 
@@ -159,6 +160,9 @@ function dragula (initialContainers, options) {
   }
 
   function startBecauseMouseMoved (e) {
+    var clientX = getCoord('clientX', e);
+    var clientY = getCoord('clientY', e);
+
     if (!_grabbed) {
       return;
     }
@@ -171,12 +175,13 @@ function dragula (initialContainers, options) {
       return;
     }
     if (o.ignoreInputTextSelection) {
-      var clientX = getCoord('clientX', e);
-      var clientY = getCoord('clientY', e);
       var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
       if (isInput(elementBehindCursor)) {
         return;
       }
+    }
+    if (Math.abs(_moveX - clientX) <= o.deadzone && Math.abs(_moveY - clientY) <= o.deadzone) {
+      return;
     }
 
     var grabbed = _grabbed; // call to end() unsets _grabbed

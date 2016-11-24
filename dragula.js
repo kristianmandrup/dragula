@@ -66,6 +66,12 @@ function dragula (initialContainers, options) {
   if (o.scale === void 0) { o.scale = null; }
   if (o.startOnLongClick === void 0) { o.startOnLongClick = null; }
 
+  if (o.containerCanStart === void 0) { o.containerCanStart = false; }
+  if (o.insertBefore === void 0) {
+    o.insertBefore = function(dropTarget, item, reference) {
+      dropTarget.insertBefore(item, reference);
+    };
+  }
 
   var drake = emitter({
     containers: o.containers,
@@ -280,7 +286,7 @@ function dragula (initialContainers, options) {
     }
 
     var handle = item;
-    if (isContainer(item, handle) && !o.allowNestedContainers) {
+    if (isContainer(item, handle) && (!o.containerCanStart || !o.allowNestedContainers)) {
       return; // don't drag container itself
     }
 
@@ -420,7 +426,7 @@ function dragula (initialContainers, options) {
       if (_copy && parent) {
         parent.removeChild(item);
       } else {
-        _source.insertBefore(item, _initialSibling);
+        o.insertBefore(_source, item, _initialSibling);
       }
     }
     if (initial || reverts) {
@@ -471,6 +477,10 @@ function dragula (initialContainers, options) {
     function accepted () {
       var droppable = isContainer(target);
       if (droppable === false) {
+        return false;
+      }
+
+      if (o.containerCanStart && _item.contains(target)) {
         return false;
       }
 
@@ -617,7 +627,7 @@ function dragula (initialContainers, options) {
       }
 
       drake.emit('preshadow', item, dropTarget, _source);
-      dropTarget.insertBefore(item, reference);
+      o.insertBefore(dropTarget, item, reference);
       drake.emit('shadow', item, dropTarget, _source);
     }
 

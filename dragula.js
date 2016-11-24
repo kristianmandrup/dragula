@@ -27,6 +27,11 @@ function dragula (initialContainers, options) {
   var _renderTimer; // timer for setTimeout renderMirrorImage
   var _lastDropTarget = null; // last container item was over
   var _grabbed; // holds mousedown context until first mousemove
+  var _startOnLongClickTimer;
+  var _scrollDirection = 0;
+  var _scrollTime = 0;
+  var _isScrolling = false;
+  var _scrollingStarted = 0;
 
   var _itemBoundary;
   var _previousMousePosition;
@@ -45,6 +50,7 @@ function dragula (initialContainers, options) {
   if (o.revertOnSpill === void 0) { o.revertOnSpill = false; }
   if (o.removeOnSpill === void 0) { o.removeOnSpill = false; }
   if (o.direction === void 0) { o.direction = 'vertical'; }
+
   if (o.fixMoveDirection === void 0) { o.fixMoveDirection = null; }
   if (o.getDirection === void 0) { o.getDirection = function() { return o.direction; }; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
@@ -56,6 +62,11 @@ function dragula (initialContainers, options) {
   if (o.allowNestedContainers === void 0) { o.allowNestedContainers = false; }
   if (o.draggedContent === void 0) { o.draggedContent = function(item) { return item; }; }
 
+  if (o.ignore === void 0) { o.ignore = []; }
+  if (o.scale === void 0) { o.scale = null; }
+  if (o.startOnLongClick === void 0) { o.startOnLongClick = null; }
+
+
   var drake = emitter({
     containers: o.containers,
     start: manualStart,
@@ -65,7 +76,8 @@ function dragula (initialContainers, options) {
     remove: remove,
     destroy: destroy,
     canMove: canMove,
-    dragging: false
+    dragging: false,
+    scale: o.scale
   });
 
   if (o.removeOnSpill === true) {
@@ -159,7 +171,14 @@ function dragula (initialContainers, options) {
         e.preventDefault(); // fixes https://github.com/bevacqua/dragula/issues/155
       }
     }
+
+    if (o.startOnLongClick) {
+      _startOnLongClickTimer = setTimeout(function () {
+        startBecauseMouseMoved(e, true);
+      }, o.startOnLongClick);
+    }
   }
+
 
   function updateCurrentMovingDirection(x, y) {
     if (x > _previousMousePosition.x) {
@@ -179,7 +198,7 @@ function dragula (initialContainers, options) {
     }
   }
 
-  function startBecauseMouseMoved (e) {
+  function startBecauseMouseMoved (e, force) {
     var clientX = getCoord('clientX', e);
     var clientY = getCoord('clientY', e);
 
@@ -191,15 +210,35 @@ function dragula (initialContainers, options) {
       return; // when text is selected on an input and then dragged, mouseup doesn't fire. this is our only hope
     }
     // truthy check fixes #239, equality fixes #207
-    if (e.clientX !== void 0 && e.clientX === _moveX && e.clientY !== void 0 && e.clientY === _moveY) {
+    if (!force && e.clientX !== void 0 && e.clientX === _moveX && e.clientY !== void 0 && e.clientY === _moveY) {
       return;
     }
+
     if (o.ignoreInputTextSelection) {
       var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
-      if (isInput(elementBehindCursor)) {
+      if (isInput(elementBehindCursor) && !o.ignore.length) {
         return;
       }
     }
+
+    if (o.ignore.length) {
+      var clientX = getCoord('clientX', e);
+      var clientY = getCoord('clientY', e);
+
+      var elementBehindCursor = doc.elementFromPoint(clientX, clientY);
+      var ignore = false;
+
+      o.ignore.forEach(function (tagName) {
+        if (tagName === elementBehindCursor.tagName.toLowerCase()) {
+          ignore = true;
+        }
+      });
+
+      if (ignore) {
+        return;
+      }
+    }
+
     var grabTravelDistance = distance({
       x: _moveX,
       y: _moveY
@@ -212,9 +251,17 @@ function dragula (initialContainers, options) {
       return;
     }
 
+    if (_startOnLongClickTimer) {
+      clearTimeout(_startOnLongClickTimer);
+    }
+
     var grabbed = _grabbed; // call to end() unsets _grabbed
+
     ungrab();
-    start(grabbed);
+    eventualMovements(true);
+    movements();
+    end();
+    start(grabbed, e);
 
     var offset = getOffset(_item);
     var calculatedOffset = o.offset({
@@ -227,16 +274,19 @@ function dragula (initialContainers, options) {
 
     classes.add(_data || _copy || _item, 'gu-transit');
     renderMirrorImage();
+    drag(e);
   }
 
   function canStart (item) {
     if (drake.dragging && _mirror) {
       return;
     }
+
     var handle = item;
     if (isContainer(item, handle) && !o.allowNestedContainers) {
       return; // don't drag container itself
     }
+
     while (getParent(item) && isContainer(getParent(item), handle) === false) {
       if (o.invalid(item, handle)) {
         return;
@@ -282,7 +332,7 @@ function dragula (initialContainers, options) {
     }
   }
 
-  function start (context) {
+  function start (context, e) {
     if (isCopy(context.item, context.source)) {
       _copy = context.item.cloneNode(true);
       drake.emit('cloned', _copy, context.item, 'copy');
@@ -293,7 +343,7 @@ function dragula (initialContainers, options) {
     _initialSibling = _currentSibling = nextEl(context.item);
 
     drake.dragging = true;
-    drake.emit('drag', _item, _source);
+    drake.emit('drag', _item, _source, e);
   }
 
   function invalidTarget () {
@@ -479,10 +529,24 @@ function dragula (initialContainers, options) {
     }
     e.preventDefault();
 
+    var containerOffset = getOffset(o.mirrorContainer);
     var clientX = getCoord('clientX', e);
     var clientY = getCoord('clientY', e);
-    var x = clientX - _offsetX;
-    var y = clientY - _offsetY;
+
+    var x = clientX - containerOffset.left;
+    var y = clientY - containerOffset.top;
+
+    if (drake.scale) {
+      x = x / drake.scale;
+      y = y / drake.scale;
+    }
+
+    x += o.mirrorContainer.scrollLeft - _offsetX;
+    y += o.mirrorContainer.scrollTop - _offsetY;
+
+    _mirror.style.left = x + 'px';
+    _mirror.style.top = y + 'px';
+
     updateCurrentMovingDirection(clientX, clientY);
 
     switch (o.fixMoveDirection) {
@@ -550,17 +614,102 @@ function dragula (initialContainers, options) {
       reference !== nextEl(item)
     ) {
       _currentSibling = reference;
-      dropTarget.insertBefore(_data, reference);
+
       if (_data !== item && parent) {
         parent.removeChild(_item);
       }
 
+      drake.emit('preshadow', item, dropTarget, _source);
+      dropTarget.insertBefore(item, reference);
       drake.emit('shadow', item, dropTarget, _source);
     }
+
+    document.addEventListener('mousemove', startScrolling);
+
     function moved (type) { drake.emit(type, item, _lastDropTarget, _source); }
     function over () { if (changed) { moved('over'); } }
     function out () { if (_lastDropTarget) { moved('out'); } }
     _previousMousePosition = { x: clientX, y: clientY };
+  }
+
+  function startScrolling(e) {
+    var region = 100;
+    var container, containerRect, topRegion, bottomRegion, newScrollDirection;
+
+    if (o.absoluteContainer) {
+      container = o.absoluteContainer;
+      containerRect = container.getBoundingClientRect();
+      topRegion = region + containerRect.top;
+      bottomRegion = containerRect.bottom - region;
+    } else {
+      container = document;
+      topRegion = region;
+      bottomRegion = window.innerHeight - region;
+    }
+
+    if (e.which === 1 && (e.clientY <= topRegion || e.clientY > bottomRegion)) {
+      newScrollDirection = 1;
+
+      if (e.clientY <= topRegion) {
+        newScrollDirection = -1;
+      }
+
+      if (newScrollDirection !== _scrollDirection) {
+        _scrollDirection = newScrollDirection;
+        _scrollTime = 0;
+        _scrollingStarted = Date.now();
+      }
+
+      if (!_isScrolling) {
+        doScroll();
+      }
+    } else {
+      _scrollDirection = 0;
+      _scrollTime = 0;
+      _isScrolling = false;
+      if (e.which !== 1) {
+        document.removeEventListener('mousemove', startScrolling);
+      }
+    }
+  }
+
+  function easeInQuad(t, b, c, d) {
+    t /= d;
+	  return c*t*t + b;
+  }
+
+  function doScroll() {
+    if (!_scrollDirection) {
+      return;
+    }
+
+    _isScrolling = true;
+    _scrollTime = Date.now() - _scrollingStarted;
+
+    requestAnimationFrame(function () {
+      var container = o.absoluteContainer || document,
+        containerRect = container.getBoundingClientRect(),
+        maxScroll = o.absoluteContainer ? container.scrollHeight - containerRect.height : window.innerHeight - document.body.clientHeight,
+        speed = easeInQuad(_scrollTime, 1, 100, 2000),
+        to;
+
+      to = container.scrollTop + speed * _scrollDirection;
+
+      if ((container.scrollTop === 0 && to <= 0) || (container.scrollTop === maxScroll && to >= maxScroll)) {
+        _scrollDirection = 0;
+        _scrollTime = 0;
+        _isScrolling = false;
+        return;
+      }
+
+      container.scrollTop = to;
+
+      setTimeout(function () {
+        if (_isScrolling) {
+          doScroll();
+        }
+      }, 15);
+    });
   }
 
   function spillOver (el) {
@@ -571,7 +720,7 @@ function dragula (initialContainers, options) {
     if (drake.dragging) { classes.add(el, 'gu-hide'); }
   }
 
-  function renderMirrorImage () {
+  function renderMirrorImage (e) {
     if (_mirror) {
       return;
     }
@@ -585,7 +734,7 @@ function dragula (initialContainers, options) {
     o.mirrorContainer.appendChild(_mirror);
     touchy(documentElement, 'add', 'mousemove', callback);
     classes.add(o.mirrorContainer, 'gu-unselectable');
-    drake.emit('cloned', _mirror, _item, 'mirror');
+    drake.emit('cloned', _mirror, _item, 'mirror', e);
   }
 
   function removeMirrorImage () {

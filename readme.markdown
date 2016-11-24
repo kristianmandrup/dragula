@@ -107,7 +107,8 @@ dragula(containers, {
   revertOnSpill: false,              // spilling will put the element back where it was dragged from, if this is true
   removeOnSpill: false,              // spilling will `.remove` the element, if this is true
   mirrorContainer: document.body,    // set the element that gets mirror elements appended
-  ignoreInputTextSelection: true     // allows users to select input text, see details below
+  ignoreInputTextSelection: true,     // allows users to select input text, see details below
+  allowNestedContainers: false       // allows dragging of containers, as in the case of nesting
 });
 ```
 
@@ -245,6 +246,10 @@ offset: function( offset, e, item ) {
 #### `options.deadzone`
 
 When this option is enabled, if the user clicks on an input element the drag won't start until their mouse pointer moves the specified distance. This translates into the user being able to accidently drag a few pixels and not trigger the drag.
+
+#### `options.allowNestedContainers`
+
+In some cases nested containers might be required, which will enable dragging not only between containers but dragging of containers themselves. In such cases addional logic will possibly be required to determine the correct behaviour. Defaults to `false`.
 
 ## API
 

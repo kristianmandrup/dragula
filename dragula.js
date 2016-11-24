@@ -32,6 +32,7 @@ function dragula (initialContainers, options) {
   var _previousMousePosition;
   var _currentMovingDirection; // up down right left
   var _contactedItems = [];
+  var _delayTimer;
 
   var o = options || {};
   if (o.moves === void 0) { o.moves = always; }
@@ -49,6 +50,7 @@ function dragula (initialContainers, options) {
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.deadzone === void 0){ o.deadzone = 0; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
+  if (o.delay === void 0) { o.delay = 0; }
   if (o.throttle === void 0) { o.throttle = false; }
   if (o.offset === void 0) { o.offset = thru; }
   if (o.allowNestedContainers === void 0) { o.allowNestedContainers = false; }
@@ -85,7 +87,7 @@ function dragula (initialContainers, options) {
 
   function events (remove) {
     var op = remove ? 'remove' : 'add';
-    touchy(documentElement, op, 'mousedown', grab);
+    touchy(documentElement, op, 'mousedown', delayedGrab);
     touchy(documentElement, op, 'mouseup', release);
   }
 
@@ -110,6 +112,13 @@ function dragula (initialContainers, options) {
     if (_grabbed) {
       e.preventDefault();
     }
+  }
+
+  function delayedGrab(e) {
+    function grabIt() {
+      grab(e);
+    }
+    _delayTimer = setTimeout(grabIt, o.delay);
   }
 
   function grab (e) {
@@ -300,6 +309,7 @@ function dragula (initialContainers, options) {
   }
 
   function ungrab () {
+    clearTimeout(_delayTimer);
     _grabbed = false;
     eventualMovements(true);
     movements(true);

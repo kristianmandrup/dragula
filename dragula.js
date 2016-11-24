@@ -658,16 +658,6 @@ function getOffset (el) {
   };
 }
 
-function getScroll (scrollProp, offsetProp) {
-  if (typeof global[offsetProp] !== 'undefined') {
-    return global[offsetProp];
-  }
-  if (documentElement.clientHeight) {
-    return documentElement[scrollProp];
-  }
-  return doc.body[scrollProp];
-}
-
 function getElementBehindPoint (direction, boundary, clientX, clientY) {
   var _x = clientX;
   var _y = clientY;
